@@ -1,28 +1,35 @@
 // config/db.js
 const mongoose = require("mongoose");
 
-let isConnected = false;
+let cached = global.mongoose;
+
+if (!cached) {
+  cached = global.mongoose = {
+    conn: null,
+    promise: null,
+  };
+}
 
 const connectDB = async () => {
-  try {
-    if (isConnected) return;
+  if (cached.conn) {
+    return cached.conn;
+  }
 
+  if (!cached.promise) {
     const uri = process.env.MONGO_URI;
+
     if (!uri) {
-      throw new Error("MONGO_URI environment variable not set");
+      throw new Error("❌ MONGO_URI environment variable not set");
     }
 
-    await mongoose.connect(uri, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
+    cached.promise = mongoose.connect(uri, {
+      bufferCommands: false,
     });
-
-    isConnected = true;
-    console.log("✅ MongoDB connected");
-  } catch (err) {
-    console.error("❌ MongoDB connection error:", err.message);
-    // ❌ DO NOT process.exit() on serverless
   }
+
+  cached.conn = await cached.promise;
+  console.log("✅ MongoDB connected (cached)");
+  return cached.conn;
 };
 
 module.exports = connectDB;

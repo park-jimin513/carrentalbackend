@@ -7,7 +7,7 @@ const authRoutes = require("../routes/auth");
 
 const app = express();
 
-// Allow frontend origin
+// CORS
 const FRONTEND_ORIGIN =
   process.env.FRONTEND_ORIGIN || "http://localhost:5173";
 
@@ -27,9 +27,12 @@ connectDB();
 app.use("/api/auth", authRoutes);
 
 // Health check
-app.get("/", (req, res) =>
-  res.json({ ok: true, message: "Backend running on Vercel 🚀" })
-);
+app.get("/", (req, res) => {
+  res.status(200).json({
+    ok: true,
+    message: "Backend running on Vercel 🚀",
+  });
+});
 
 // ❌ DO NOT use app.listen()
 module.exports = app;

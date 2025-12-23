@@ -4,25 +4,19 @@ const mongoose = require("mongoose");
 let cached = global.mongoose;
 
 if (!cached) {
-  cached = global.mongoose = {
-    conn: null,
-    promise: null,
-  };
+  cached = global.mongoose = { conn: null, promise: null };
 }
 
 const connectDB = async () => {
-  if (cached.conn) {
-    return cached.conn;
-  }
+  if (cached.conn) return cached.conn;
 
   if (!cached.promise) {
     const uri = process.env.MONGO_URI;
-
-    if (!uri) {
-      throw new Error("❌ MONGO_URI environment variable not set");
-    }
+    if (!uri) throw new Error("❌ MONGO_URI environment variable not set");
 
     cached.promise = mongoose.connect(uri, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
       bufferCommands: false,
     });
   }

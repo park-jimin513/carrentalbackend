@@ -1,6 +1,6 @@
 // routes/auth.js
 const express = require("express");
-const bcrypt = require("bcrypt");
+const bcrypt = require("bcryptjs"); // ✅ changed from 'bcrypt' to 'bcryptjs'
 const User = require("../models/User");
 const generateOtp = require("../utils/generateOtp");
 const nodemailer = require("nodemailer");
@@ -8,7 +8,6 @@ const jwt = require("jsonwebtoken");
 
 const router = express.Router();
 const SALT_ROUNDS = 10;
-
 const OTP_TTL_MINUTES = Number(process.env.OTP_TTL_MINUTES || 10);
 
 // Nodemailer transporter
@@ -70,24 +69,15 @@ router.post("/login", async (req, res) => {
     const { email, password } = req.body;
     if (!email || !password) return res.status(400).json({ ok: false, message: "email and password required" });
 
-    // normalize email
     const normalizedEmail = String(email).trim().toLowerCase();
     if (process.env.NODE_ENV !== 'production') console.log(`[auth] login attempt for: ${normalizedEmail}`);
 
     const user = await User.findOne({ email: normalizedEmail });
-    if (!user) {
-      if (process.env.NODE_ENV !== 'production') console.log(`[auth] user not found for: ${normalizedEmail}`);
-      return res.status(401).json({ ok: false, message: "Invalid credentials" });
-    }
+    if (!user) return res.status(401).json({ ok: false, message: "Invalid credentials" });
 
-    // ensure passwordHash exists
-    if (!user.passwordHash) {
-      if (process.env.NODE_ENV !== 'production') console.log(`[auth] user found but no passwordHash for: ${normalizedEmail}`);
-      return res.status(401).json({ ok: false, message: "Invalid credentials" });
-    }
+    if (!user.passwordHash) return res.status(401).json({ ok: false, message: "Invalid credentials" });
 
     const match = await bcrypt.compare(password, user.passwordHash);
-    if (process.env.NODE_ENV !== 'production') console.log(`[auth] bcrypt.compare result for ${normalizedEmail}: ${match}`);
     if (!match) return res.status(401).json({ ok: false, message: "Invalid credentials" });
 
     const payload = {

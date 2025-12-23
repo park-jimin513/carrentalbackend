@@ -8,9 +8,7 @@ const authRoutes = require("../routes/auth");
 const app = express();
 
 // CORS
-const FRONTEND_ORIGIN =
-  process.env.FRONTEND_ORIGIN || "http://localhost:5173";
-
+const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || "http://localhost:5173";
 app.use(
   cors({
     origin: FRONTEND_ORIGIN,
@@ -20,7 +18,7 @@ app.use(
 
 app.use(express.json());
 
-// Connect DB (serverless safe)
+// Connect DB
 connectDB();
 
 // Routes
@@ -30,9 +28,13 @@ app.use("/api/auth", authRoutes);
 app.get("/", (req, res) => {
   res.status(200).json({
     ok: true,
-    message: "Backend running on Vercel 🚀",
+    message: "Backend running 🚀",
   });
 });
 
-// ❌ DO NOT use app.listen()
-module.exports = app;
+// Listen on Render port
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+  console.log(`✅ Server running on port ${PORT}`);
+  console.log("✅ MongoDB connected (cached)");
+});

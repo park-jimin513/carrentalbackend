@@ -1,4 +1,3 @@
-// config/db.js
 const mongoose = require("mongoose");
 
 let cached = global.mongoose;
@@ -16,7 +15,7 @@ const connectDB = async () => {
 
     cached.promise = mongoose.connect(uri, {
       useNewUrlParser: true,
-      useUnifiedTopology: true,
+      useUnifiedTopology: true, // required for Atlas
       bufferCommands: false,
     });
   }

@@ -7,25 +7,23 @@ const authRoutes = require("../routes/auth");
 
 const app = express();
 
-// ✅ ALLOWED FRONTENDS
+// ✅ ALLOWED FRONTENDS (LOCAL + PROD)
 const ALLOWED_ORIGINS = [
-  "http://localhost:5174",              // local dev
-  "https://cargo-sigma-one.vercel.app", // Vercel frontend
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "https://cargo-sigma-one.vercel.app",
 ];
 
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow non-browser requests (Postman, curl)
-      if (!origin) return callback(null, true);
+      if (!origin) return callback(null, true); // Postman / curl
 
       if (ALLOWED_ORIGINS.includes(origin)) {
         return callback(null, true);
       }
 
-      return callback(
-        new Error(`CORS policy: Origin ${origin} not allowed`)
-      );
+      return callback(new Error("CORS not allowed"));
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
@@ -33,7 +31,7 @@ app.use(
   })
 );
 
-// ✅ VERY IMPORTANT for preflight requests
+// ✅ Preflight support (VERY IMPORTANT)
 app.options("*", cors());
 
 app.use(express.json());
@@ -44,12 +42,9 @@ connectDB();
 // Routes
 app.use("/api/auth", authRoutes);
 
-// Health check
+// Health
 app.get("/", (req, res) => {
-  res.status(200).json({
-    ok: true,
-    message: "Backend running 🚀",
-  });
+  res.json({ ok: true, message: "Backend running 🚀" });
 });
 
 // Render port

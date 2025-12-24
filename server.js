@@ -8,35 +8,40 @@ const authRoutes = require("./routes/auth");
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// CORS
-const FRONTEND_ORIGIN_LOCAL = "http://localhost:5174"; // local frontend
-const FRONTEND_ORIGIN_PROD = process.env.FRONTEND_ORIGIN || "https://your-production-frontend.com"; // deployed frontend
-const ALLOWED_ORIGINS = [FRONTEND_ORIGIN_LOCAL, FRONTEND_ORIGIN_PROD];
+// ✅ SAME ORIGINS AS index.js
+const ALLOWED_ORIGINS = [
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "https://cargo-sigma-one.vercel.app",
+];
 
 app.use(
   cors({
     origin: (origin, callback) => {
-      // allow requests from allowed origins or non-browser clients (origin undefined)
       if (!origin) return callback(null, true);
-      if (ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
-      return callback(new Error(`CORS policy: Origin ${origin} not allowed`));
+      if (ALLOWED_ORIGINS.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(new Error("CORS not allowed"));
     },
     credentials: true,
   })
 );
 
+app.options("*", cors());
+
 app.use(express.json());
 
-// DB connect
+// DB
 connectDB();
 
 // Routes
 app.use("/api/auth", authRoutes);
 
 app.get("/", (req, res) => {
-  res.json({ ok: true, message: "Server running 🚀" });
+  res.json({ ok: true, message: "Local server running 🚀" });
 });
 
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`🚀 Server running locally on port ${PORT}`);
 });

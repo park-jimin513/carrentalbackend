@@ -9,12 +9,16 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // CORS
-const FRONTEND_ORIGIN =
-  process.env.FRONTEND_ORIGIN || "http://localhost:5173";
-
+const allowed = [
+  process.env.FRONTEND_ORIGIN || "http://localhost:5173",
+  "http://localhost:5174",
+];
 app.use(
   cors({
-    origin: FRONTEND_ORIGIN,
+    origin: (origin, cb) => {
+      if (!origin) return cb(null, true); // allow non-browser requests
+      return cb(null, allowed.includes(origin));
+    },
     credentials: true,
   })
 );

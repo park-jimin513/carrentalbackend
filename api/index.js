@@ -8,10 +8,17 @@ const authRoutes = require("../routes/auth");
 const app = express();
 
 // CORS
-const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || "http://localhost:5173";
+const FRONTEND_ORIGIN_LOCAL = "http://localhost:5174"; // your local React frontend
+const FRONTEND_ORIGIN_PROD = process.env.FRONTEND_ORIGIN || "https://your-production-frontend.com"; // optional future frontend
+const ALLOWED_ORIGINS = [FRONTEND_ORIGIN_LOCAL, FRONTEND_ORIGIN_PROD];
+
 app.use(
   cors({
-    origin: FRONTEND_ORIGIN,
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true); // allow Postman / curl
+      if (ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
+      return callback(new Error(`CORS policy: Origin ${origin} not allowed`));
+    },
     credentials: true,
   })
 );

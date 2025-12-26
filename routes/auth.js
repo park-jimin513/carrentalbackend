@@ -28,6 +28,17 @@ if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
   });
 }
 
+// Log whether EMAIL_USER is present (helps debug env issues)
+console.log("EMAIL_USER set:", !!process.env.EMAIL_USER);
+
+// Verify transporter at startup if available and log detailed status
+if (transporter) {
+  transporter
+    .verify()
+    .then(() => console.log("✅ Mail transporter is ready"))
+    .catch((err) => console.error("Mail transporter verify failed:", err && err.stack));
+}
+
 /* =========================
    SEND OTP EMAIL (NO CRASH)
 ========================= */
@@ -36,7 +47,7 @@ async function sendOtpEmail(toEmail, otp) {
     throw new Error("Email transporter not configured");
   }
 
-  return transporter.sendMail({
+  const info = await transporter.sendMail({
     from: `"Car Rental" <${process.env.EMAIL_USER}>`,
     to: toEmail,
     subject: "Password Reset OTP",
@@ -47,6 +58,20 @@ async function sendOtpEmail(toEmail, otp) {
       <p>Valid for ${OTP_TTL_MINUTES} minutes.</p>
     `,
   });
+
+  // Log sendMail result for debugging delivery/acceptance
+  try {
+    console.log("sendMail result:", {
+      messageId: info && info.messageId,
+      accepted: info && info.accepted,
+      rejected: info && info.rejected,
+      response: info && info.response,
+    });
+  } catch (e) {
+    console.error("Failed to log sendMail info:", e && e.stack);
+  }
+
+  return info;
 }
 
 /* =========================

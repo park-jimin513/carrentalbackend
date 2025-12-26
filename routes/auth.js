@@ -1,4 +1,3 @@
-// routes/auth.js
 const express = require("express");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
@@ -13,27 +12,31 @@ const SALT_ROUNDS = 10;
 const OTP_TTL_MINUTES = Number(process.env.OTP_TTL_MINUTES || 10);
 
 /* =========================
-   MAIL TRANSPORTER (SAFE)
+   MAIL TRANSPORTER (RENDER SAFE)
 ========================= */
-const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 465,
-  secure: true,
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS, // Gmail APP PASSWORD
-  },
-});
+let transporter = null;
+
+if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+  transporter = nodemailer.createTransport({
+    host: "smtp.gmail.com",
+    port: 465,
+    secure: true,
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS, // Gmail App Password
+    },
+  });
+}
 
 /* =========================
-   SEND OTP EMAIL
+   SEND OTP EMAIL (NO CRASH)
 ========================= */
 async function sendOtpEmail(toEmail, otp) {
-  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-    throw new Error("Email service not configured");
+  if (!transporter) {
+    throw new Error("Email transporter not configured");
   }
 
-  const mail = {
+  return transporter.sendMail({
     from: `"Car Rental" <${process.env.EMAIL_USER}>`,
     to: toEmail,
     subject: "Password Reset OTP",
@@ -41,11 +44,9 @@ async function sendOtpEmail(toEmail, otp) {
       <h2>Password Reset</h2>
       <p>Your OTP is:</p>
       <h1>${otp}</h1>
-      <p>This OTP is valid for ${OTP_TTL_MINUTES} minutes.</p>
+      <p>Valid for ${OTP_TTL_MINUTES} minutes.</p>
     `,
-  };
-
-  return transporter.sendMail(mail);
+  });
 }
 
 /* =========================
@@ -64,15 +65,16 @@ router.post("/register", async (req, res) => {
     } = req.body;
 
     if (!fullName || !email || !password || !phone) {
-      return res
-        .status(400)
-        .json({ ok: false, message: "Required fields missing" });
+      return res.status(400).json({
+        ok: false,
+        message: "fullName, email, password, phone required",
+      });
     }
 
     const normalizedEmail = email.toLowerCase();
 
-    const existing = await User.findOne({ email: normalizedEmail });
-    if (existing) {
+    const exists = await User.findOne({ email: normalizedEmail });
+    if (exists) {
       return res
         .status(400)
         .json({ ok: false, message: "Email already registered" });
@@ -80,7 +82,7 @@ router.post("/register", async (req, res) => {
 
     const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
 
-    const user = new User({
+    await User.create({
       role,
       fullName,
       email: normalizedEmail,
@@ -89,8 +91,6 @@ router.post("/register", async (req, res) => {
       companyName,
       businessLicenseId,
     });
-
-    await user.save();
 
     res.json({ ok: true, message: "Registered successfully" });
   } catch (err) {
@@ -105,10 +105,11 @@ router.post("/register", async (req, res) => {
 router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
+
     if (!email || !password) {
       return res
         .status(400)
-        .json({ ok: false, message: "Email and password required" });
+        .json({ ok: false, message: "Email & password required" });
     }
 
     const user = await User.findOne({ email: email.toLowerCase() });
@@ -140,7 +141,7 @@ router.post("/login", async (req, res) => {
 });
 
 /* =========================
-   FORGOT PASSWORD (OTP)
+   FORGOT PASSWORD (NO 500)
 ========================= */
 router.post("/forgot", async (req, res) => {
   try {
@@ -164,9 +165,17 @@ router.post("/forgot", async (req, res) => {
 
     await user.save();
 
-    await sendOtpEmail(user.email, otp);
-
-    res.json({ ok: true, message: "OTP sent to email" });
+    try {
+      await sendOtpEmail(user.email, otp);
+      return res.json({ ok: true, message: "OTP sent to email" });
+    } catch (emailErr) {
+      console.error("EMAIL ERROR:", emailErr.message);
+      // ✅ NEVER RETURN 500
+      return res.json({
+        ok: true,
+        message: "OTP generated (email service unavailable)",
+      });
+    }
   } catch (err) {
     console.error("FORGOT ERROR:", err);
     res.status(500).json({ ok: false, message: "Server error" });
@@ -199,8 +208,8 @@ router.post("/reset", async (req, res) => {
         .json({ ok: false, message: "OTP expired" });
     }
 
-    const otpMatch = await bcrypt.compare(otp, user.otpHash);
-    if (!otpMatch) {
+    const validOtp = await bcrypt.compare(otp, user.otpHash);
+    if (!validOtp) {
       return res.status(400).json({ ok: false, message: "Invalid OTP" });
     }
 
